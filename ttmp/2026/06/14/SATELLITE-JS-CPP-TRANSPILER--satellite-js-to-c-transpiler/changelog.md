@@ -39,3 +39,14 @@ Completed Phases 2-8, added docs and Makefile, verified generated C++ compiles/l
 - /home/manuel/code/wesen/2026-06-14--satellite-codegen/src/validator.js — Mission validation pass
 - /home/manuel/code/wesen/2026-06-14--satellite-codegen/test/hardening.test.js — Hardening tests
 
+
+## 2026-06-14
+
+Uploaded final post-Phase-8 documentation bundle to reMarkable as SATELLITE JS CPP Transpiler Guide Final.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/README.md — Included in final reMarkable bundle
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/docs/supported-subset.md — Included in final reMarkable bundle
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/ttmp/2026/06/14/SATELLITE-JS-CPP-TRANSPILER--satellite-js-to-c-transpiler/reference/01-diary.md — Recorded final upload evidence
+

@@ -709,3 +709,67 @@ npm test
 npm run smoke
 docmgr doctor --ticket SATELLITE-JS-CPP-TRANSPILER --stale-after 30
 ```
+
+## Step 6: Re-upload Final Post-Phase-8 Bundle to reMarkable
+
+After the final code/docs push, I uploaded a refreshed reMarkable bundle with the post-Phase-8 design addendum, final tasks, diary, README, supported-subset doc, release checklist, and original satellite JS API contract. This avoids leaving the earlier reMarkable upload stale relative to the completed repository.
+
+### Prompt Context
+
+**User prompt (verbatim):** (same as Step 5)
+
+**Assistant interpretation:** Keep the externally delivered documentation aligned with the completed and pushed repository state.
+
+**Inferred user intent:** The user wants the final guide available on reMarkable, not only the earlier pre-Phase-8 guide.
+
+**Commit (code):** N/A — documentation delivery record only.
+
+### What I did
+- Uploaded `SATELLITE JS CPP Transpiler Guide Final.pdf` to `/ai/2026/06/14/SATELLITE-JS-CPP-TRANSPILER`.
+- Included the design guide, tasks, diary, README, supported-subset doc, release checklist, and source API contract.
+
+### Why
+- The guide changed after the first upload, so the final reMarkable copy needed to be refreshed.
+
+### What worked
+- Upload succeeded with:
+
+```text
+OK: uploaded SATELLITE JS CPP Transpiler Guide Final.pdf -> /ai/2026/06/14/SATELLITE-JS-CPP-TRANSPILER
+```
+
+### What didn't work
+- N/A
+
+### What I learned
+- Use a new final bundle name rather than overwriting the earlier upload when annotations may exist.
+
+### What was tricky to build
+- N/A
+
+### What warrants a second pair of eyes
+- Confirm whether the earlier non-final bundle should be deleted or left as historical context.
+
+### What should be done in the future
+- If more docs change, upload a new dated/final bundle rather than overwriting annotated PDFs.
+
+### Code review instructions
+- No code review needed for upload-only work.
+- Check the remote path `/ai/2026/06/14/SATELLITE-JS-CPP-TRANSPILER` on reMarkable if manual verification is desired.
+
+### Technical details
+
+```bash
+remarquee upload bundle \
+  ttmp/2026/06/14/SATELLITE-JS-CPP-TRANSPILER--satellite-js-to-c-transpiler/design-doc/01-satellite-js-to-c-transpiler-design-and-implementation-guide.md \
+  ttmp/2026/06/14/SATELLITE-JS-CPP-TRANSPILER--satellite-js-to-c-transpiler/tasks.md \
+  ttmp/2026/06/14/SATELLITE-JS-CPP-TRANSPILER--satellite-js-to-c-transpiler/reference/01-diary.md \
+  README.md \
+  docs/supported-subset.md \
+  docs/release-checklist.md \
+  source/satellite-js.md \
+  --name "SATELLITE JS CPP Transpiler Guide Final" \
+  --remote-dir "/ai/2026/06/14/SATELLITE-JS-CPP-TRANSPILER" \
+  --toc-depth 2 \
+  --non-interactive
+```
