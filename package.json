@@ -1,0 +1,26 @@
+{
+  "name": "satellite-js-cpp-transpiler",
+  "version": "0.1.0",
+  "description": "A focused JS-to-C++ transpiler for scripts that use the satellite-os API described in source/satellite-js.md.",
+  "type": "module",
+  "bin": {
+    "satjs-cpp": "./src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "transpile:example": "node ./src/cli.js examples/housekeeping.js --out build/housekeeping.cpp"
+  },
+  "keywords": [
+    "satellite-os",
+    "transpiler",
+    "codegen",
+    "cpp"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.28.5"
+  }
+}
