@@ -52,17 +52,78 @@ test('transpiles device.register as a typed C++ driver registration', () => {
   assert.match(code, /satellite::device::register_driver<EPSDriver>\("eps", satellite::Object\{\{"bus", "i2c0"\}, \{"address", 0x20\}\}\);/);
 });
 
-test('reports unsupported non-satellite imports with diagnostics', () => {
-  const source = `import fs from 'node:fs'`;
-
+function assertDiagnostic(source, code, messagePattern) {
   assert.throws(
     () => transpile(source, { filename: 'bad.js' }),
     (error) => {
       assert.ok(error instanceof TranspileError);
-      assert.equal(error.diagnostics[0].code, 'SATJS_UNSUPPORTED_SYNTAX');
-      assert.match(error.diagnostics[0].message, /Unsupported import source/);
+      assert.equal(error.diagnostics[0].code, code);
+      assert.match(error.diagnostics[0].message, messagePattern);
       return true;
     },
+  );
+}
+
+test('reports unsupported non-satellite imports with stable diagnostics', () => {
+  assertDiagnostic(`import fs from 'node:fs'`, 'SATJS_IMPORT_UNSUPPORTED', /Unsupported import source/);
+});
+
+test('rejects console and timer APIs with satellite-os alternatives', () => {
+  assertDiagnostic(
+    `import { task } from 'satellite-os'; task.once('boot', () => { console.log('boot') })`,
+    'SATJS_FORBIDDEN_API',
+    /console\.\*/,
+  );
+  assertDiagnostic(
+    `import { task } from 'satellite-os'; task.once('boot', () => { setInterval(() => {}, 1000) })`,
+    'SATJS_FORBIDDEN_API',
+    /setInterval/,
+  );
+});
+
+test('rejects dynamic JavaScript runtime features', () => {
+  assertDiagnostic(
+    `import { task } from 'satellite-os'; task.once('boot', () => eval('1 + 1'))`,
+    'SATJS_FORBIDDEN_API',
+    /eval/,
+  );
+  assertDiagnostic(
+    `import { task } from 'satellite-os'; task.once('boot', () => new Function('return 1'))`,
+    'SATJS_FORBIDDEN_API',
+    /new Function/,
+  );
+  assertDiagnostic(
+    `import { task } from 'satellite-os'; task.once('boot', () => import('./late.js'))`,
+    'SATJS_FORBIDDEN_API',
+    /Dynamic import/,
+  );
+});
+
+test('enforces top-level boot wiring policy and API contracts', () => {
+  assertDiagnostic(
+    `import { bus } from 'satellite-os'; bus.open('i2c0', {})`,
+    'SATJS_TOP_LEVEL_POLICY',
+    /Unsupported top-level/,
+  );
+  assertDiagnostic(
+    `import { device } from 'satellite-os'; class EPSDriver {}; device.register('eps', EPSDriver, {})`,
+    'SATJS_TOP_LEVEL_POLICY',
+    /Unsupported top-level ClassDeclaration/,
+  );
+  assertDiagnostic(
+    `import { device } from 'satellite-os'; const EPSDriver = {}; device.register('eps', EPSDriver, {})`,
+    'SATJS_DRIVER_IMPORT',
+    /not imported from a relative/,
+  );
+  assertDiagnostic(
+    `import { task } from 'satellite-os'; task.every('housekeeping', () => {})`,
+    'SATJS_API_ARITY',
+    /task\.every expects 3 arguments/,
+  );
+  assertDiagnostic(
+    `import { task } from 'satellite-os'; task.once('boot', 42)`,
+    'SATJS_CALLBACK_SHAPE',
+    /callback must be/,
   );
 });
 
