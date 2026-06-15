@@ -91,3 +91,13 @@
 - [x] Add fuzz/snapshot coverage for unsupported syntax to prevent crashes.
 - [x] Add performance smoke tests for larger mission scripts.
 - [x] Add architecture docs for future maintainers when IR and runtime integration land.
+
+## Phase 9 — Demo ladder and C++ emulator harness
+
+- [x] Add a progression of demo JS programs from minimal boot telemetry through realistic mission-loop complexity.
+- [x] Replace the no-op C++ runtime shim with a deterministic emulator for bus/device/task/telemetry/fault behavior.
+- [x] Add demo runners and driver stubs needed to compile generated C++ binaries.
+- [x] Extend the Makefile with demo check/transpile/compile/run/validate targets.
+- [x] Validate all demos with `make demos-validate` and include demo validation in `make smoke`.
+- [x] Document the demo ladder and emulator behavior in `docs/demo-programs.md`, `docs/emulator.md`, and README updates.
+- [x] Update CI to run `make smoke`.

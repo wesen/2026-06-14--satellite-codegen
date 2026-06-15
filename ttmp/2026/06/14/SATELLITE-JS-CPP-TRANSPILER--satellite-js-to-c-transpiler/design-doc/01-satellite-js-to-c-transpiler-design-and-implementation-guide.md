@@ -14,8 +14,18 @@ RelatedFiles:
       Note: Example transpile/compile/smoke entrypoints added for final handoff
     - Path: README.md
       Note: User-facing quickstart and Makefile commands
+    - Path: docs/demo-programs.md
+      Note: Documents demo ladder from easy to realistic
+    - Path: docs/emulator.md
+      Note: Documents emulator conditions
+    - Path: examples/demo_runner.cpp
+      Note: Runs generated demo binaries under the emulator
+    - Path: examples/demos/07-realistic-mission-loop.js
+      Note: Most complex demo script exercising integrated mission behavior
     - Path: runtime/satellite_os.hpp
-      Note: Compile-only runtime shape expected by generated C++
+      Note: |-
+        Compile-only runtime shape expected by generated C++
+        Deterministic C++ emulator for generated mission code
     - Path: source/research/babel-parser.md
       Note: Local parser API reference used by the design
     - Path: source/research/esprima-syntax-tree-format.md
@@ -47,6 +57,7 @@ LastUpdated: 2026-06-15T02:45:00-04:00
 WhatFor: Onboard a new intern to the satellite-os API contract, the JS subset, the compiler pipeline, the generated C++ runtime shape, and the phased implementation plan.
 WhenToUse: Use before changing the transpiler, adding a lowering rule, reviewing generated C++, or deciding whether a JS construct belongs in the supported mission-script subset.
 ---
+
 
 
 
@@ -883,3 +894,22 @@ docmgr doctor --ticket SATELLITE-JS-CPP-TRANSPILER --stale-after 30
 ```
 
 At completion, these commands pass and the generated C++ compiles and links into `build/housekeeping`.
+
+## Phase 9 Addendum: Demo Ladder and Emulator Harness
+
+A new Phase 9 extends the project from compiler validation into executable mission-scenario validation. The repository now includes seven demo JavaScript programs under `examples/demos/`, ordered from simple boot telemetry to a realistic mission loop that combines device registration, bus transactions, telemetry watches, recurring housekeeping, command handling, and fault recovery.
+
+The C++ runtime header `runtime/satellite_os.hpp` now acts as a deterministic emulator rather than a no-op shim. It simulates bus locks and transactions, device registration/acquisition/release, scheduler iterations, command events, telemetry frames, telemetry watchers, fault counters/handlers, shutdown/pause behavior, and resource-leak reporting. Generated C++ is linked with `examples/demo_runner.cpp`; each demo binary is executed with its demo name so the emulator can select realistic conditions such as bus timeouts, over-temperature readings, low EPS voltage, and queued command events.
+
+New validation commands:
+
+```bash
+make demos-check
+make demos-transpile
+make demos-compile
+make demos-run
+make demos-validate
+make smoke
+```
+
+`make smoke` now runs the JavaScript tests, compiles/validates the baseline example, and then checks, transpiles, compiles, links, and executes every demo under the emulator. The demo ladder is documented in `docs/demo-programs.md`, and the emulator behavior is documented in `docs/emulator.md`.

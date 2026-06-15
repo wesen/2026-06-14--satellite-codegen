@@ -50,3 +50,16 @@ Uploaded final post-Phase-8 documentation bundle to reMarkable as SATELLITE JS C
 - /home/manuel/code/wesen/2026-06-14--satellite-codegen/docs/supported-subset.md — Included in final reMarkable bundle
 - /home/manuel/code/wesen/2026-06-14--satellite-codegen/ttmp/2026/06/14/SATELLITE-JS-CPP-TRANSPILER--satellite-js-to-c-transpiler/reference/01-diary.md — Recorded final upload evidence
 
+
+## 2026-06-14
+
+Added Phase 9 demo ladder and deterministic C++ emulator harness; validated all demos with make smoke.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/Makefile — Demo validation targets
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/docs/demo-programs.md — Demo documentation
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/docs/emulator.md — Emulator documentation
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/examples/demos/07-realistic-mission-loop.js — Realistic mission demo
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/runtime/satellite_os.hpp — Emulator runtime
+

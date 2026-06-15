@@ -11,15 +11,25 @@ Intent: long-term
 Owners: []
 RelatedFiles:
     - Path: Makefile
-      Note: Final requested example compile/run workflow
+      Note: |-
+        Final requested example compile/run workflow
+        Demo validation workflow
     - Path: README.md
       Note: Final README requested by user
+    - Path: docs/emulator.md
+      Note: Emulator documentation
     - Path: docs/release-checklist.md
       Note: Release/handoff documentation
     - Path: docs/supported-subset.md
       Note: Script-author documentation
+    - Path: examples/demos/01-boot-telemetry.js
+      Note: First easy demo in the ladder
+    - Path: examples/demos/07-realistic-mission-loop.js
+      Note: Hardest realistic demo in the ladder
     - Path: runtime/satellite_os.hpp
-      Note: Compile smoke target and runtime-shape assumptions recorded in Step 2
+      Note: |-
+        Compile smoke target and runtime-shape assumptions recorded in Step 2
+        Emulator implementation details recorded in Step 7
     - Path: src/emitter.js
       Note: Phase 1 implementation and tricky lowering fixes recorded in Step 2
     - Path: test/hardening.test.js
@@ -34,6 +44,7 @@ LastUpdated: 2026-06-15T02:55:00-04:00
 WhatFor: Record what changed, why, what failed, what was tricky, and how to validate or continue the transpiler work.
 WhenToUse: Read before resuming SATELLITE-JS-CPP-TRANSPILER implementation or reviewing its design/code changes.
 ---
+
 
 
 
@@ -772,4 +783,152 @@ remarquee upload bundle \
   --remote-dir "/ai/2026/06/14/SATELLITE-JS-CPP-TRANSPILER" \
   --toc-depth 2 \
   --non-interactive
+```
+
+## Step 7: Add Demo Ladder and Deterministic C++ Emulator Harness
+
+This step expands the project from a compiler and compile-smoke harness into an executable demo environment. The new demo ladder starts with a minimal boot telemetry script and ends with a realistic multi-subsystem mission loop that exercises bus access, device acquisition, scheduler iterations, telemetry watches, command events, fault handling, and recovery behavior.
+
+The most important implementation change is that `runtime/satellite_os.hpp` is no longer just a no-op compile shim. It now implements a deterministic emulator that makes generated C++ run on a developer machine and reports telemetry, faults, scheduler events, resource leaks, and logs. This gives reviewers a way to test the generated C++ under simulated real conditions instead of only checking that it compiles.
+
+### Prompt Context
+
+**User prompt (verbatim):** "make a whole set of demo JS programs from easy to harder, and an emulator environment / library for the C++ so we can test things. Then transpiel them and validate. Extensive and from simple to real life complexity. The emulator harness should simulate real conditions."
+
+**Assistant interpretation:** Add a broad demo suite, implement a realistic-enough C++ emulator for the generated satellite runtime API, transpile/compile/run all demos, validate them, document the workflow, and keep the diary updated before pushing.
+
+**Inferred user intent:** The user wants confidence that the transpiler produces runnable mission-like C++ across a range of complexity, not only one small example.
+
+**Commit (code):** `e32ee61` — ":art: Add examples" (demo/emulator implementation commit already on `origin/main`)
+
+**Commit (code):** FINAL_COMMIT_PENDING — remaining docs/runner cleanup after final validation.
+
+### What I did
+
+- Added seven demo JS programs under `examples/demos/`:
+  - `01-boot-telemetry.js`
+  - `02-bus-temperature.js`
+  - `03-device-heater-control.js`
+  - `04-fault-recovery.js`
+  - `05-thermal-watchdog.js`
+  - `06-command-safe-mode.js`
+  - `07-realistic-mission-loop.js`
+- Added `examples/demos/README.md` with the demo ladder summary.
+- Added `examples/demo_runner.cpp` so each generated demo binary can run `satellite_main()` under the emulator.
+- Updated `examples/runner.cpp` so the baseline housekeeping example also runs under the emulator and reports telemetry/logs.
+- Added `examples/drivers/adcs.hpp` for the realistic mission demo.
+- Replaced the no-op behavior in `runtime/satellite_os.hpp` with a deterministic emulator for:
+  - bus locks and transactions,
+  - injected bus timeouts,
+  - device registration/acquisition/release,
+  - output control,
+  - once/every/on scheduler registrations,
+  - recurring scheduler iterations,
+  - command events,
+  - telemetry emission and snapshots,
+  - telemetry threshold watchers,
+  - fault counters and handlers,
+  - task pause/shutdown,
+  - resource leak reporting.
+- Updated `Makefile` with demo targets:
+  - `make demos-check`
+  - `make demos-transpile`
+  - `make demos-compile`
+  - `make demos-run`
+  - `make demos-validate`
+- Updated `make smoke` to include demo validation.
+- Added docs:
+  - `docs/demo-programs.md`
+  - `docs/emulator.md`
+- Updated `README.md`, `runtime/README.md`, `docs/release-checklist.md`, and CI to use the new demo/emulator flow.
+- Relaxed the mission value model to allow member-reference telemetry values like `ctx.count` and `ctx.iteration`.
+- Updated callback lowering so named `task.once` callbacks compile as no-argument wrappers instead of fragile generic varargs wrappers.
+
+### Why
+
+- A single example can hide compiler/runtime integration mistakes. A demo ladder forces the toolchain through increasingly realistic API combinations.
+- The emulator makes generated C++ executable and observable without flight hardware.
+- Simulated time, faults, telemetry watches, commands, and resource locks provide much stronger validation than compile-only tests.
+- Make targets make the workflow easy to repeat in CI and during review.
+
+### What worked
+
+- All demo JS programs pass validation with `make demos-check`.
+- All demos transpile to C++ under `build/demos/*.cpp`.
+- All generated demo C++ files compile and link with `examples/demo_runner.cpp`.
+- All demo binaries execute under the emulator and print telemetry/fault/log reports.
+- Full validation passes with:
+
+```bash
+make clean
+make smoke
+make run-example
+```
+
+### What didn't work
+
+- The first demo compile exposed a callback-lowering problem. Named no-argument `task.once` callbacks were wrapped as generic varargs lambdas. The emulator's invocability checks tried to instantiate the wrapper with a task context, which produced a hard C++ error for functions like `bootBeacon()` that take no arguments. I fixed this by making IR boot-operation emission choose callback wrapper shape by API: no args for `task.once`, context for `task.every`/fault handlers, and payload for `task.on`.
+- Demo validation initially rejected telemetry values like `ctx.count` because the value model did not classify `MemberExpression` as an allowed runtime reference. I added a `reference` value kind so telemetry can emit context fields and similar runtime values while driver schemas still enforce literal types where needed.
+- The command demos initially accepted a `payload` parameter they did not use, which produced noisy `-Wall -Wextra` warnings. I changed those demo callbacks to no-argument callbacks because the payload was not needed for the scenario.
+
+### What I learned
+
+- C++ generic-lambda invocability can instantiate callback bodies in ways that turn an apparent SFINAE check into a hard error. API-aware callback wrappers are safer than a single varargs wrapper.
+- A realistic emulator quickly reveals assumptions that compile-only shims hide, especially around resource closure, callbacks, and scheduler execution order.
+- Demo names are a simple, effective way to configure deterministic emulator conditions without adding a separate scenario file format yet.
+
+### What was tricky to build
+
+- The emulator needed enough behavior to feel real without becoming a second flight runtime. I kept it deterministic and header-only, but it now models the parts that matter for generated code: bus locks, device locks, telemetry frames, watchers, fault callbacks, scheduler iterations, command events, shutdown, and report-based leak detection.
+- The hardest compatibility issue was bridging generated callback shapes to runtime invocation. The final design lets the emitter choose callback wrapper shape from the known satellite API call instead of forcing the runtime to guess.
+- Include paths for demos required care because demos import drivers with `../drivers/eps.js`, which lowers to `#include "../drivers/eps.hpp"`. The Makefile compiles generated demo C++ with `-Iexamples/demos` so those relative includes resolve correctly.
+
+### What warrants a second pair of eyes
+
+- Review `runtime/satellite_os.hpp` for emulator semantics and whether any behavior should move out of the header if it grows further.
+- Review the demo ladder to confirm it covers the right mission scenarios and failure modes.
+- Review `src/emitter.js` callback wrapper selection for `task.once`, `task.every`, `task.on`, and `fault.handle`.
+- Review whether demo-name-driven emulator scenarios should eventually become explicit YAML/JSON scenario files.
+
+### What should be done in the future
+
+- Add scenario files if demos need richer conditions than demo-name switches and `SATELLITE_EMU_ITERATIONS`.
+- Add assertions over emulator output rather than relying only on exit code/log review.
+- Add more subsystem-specific driver facades once real mission drivers are known.
+
+### Code review instructions
+
+- Start with the demo ladder:
+
+```bash
+ls examples/demos
+```
+
+- Review the emulator:
+
+```bash
+less runtime/satellite_os.hpp
+less docs/emulator.md
+```
+
+- Validate everything:
+
+```bash
+make clean
+make demos-validate
+make smoke
+make run-example
+```
+
+### Technical details
+
+Final validation commands run before this diary update:
+
+```bash
+make clean
+make demos-check
+make demos-compile
+make demos-run
+make smoke
+make run-example
 ```
