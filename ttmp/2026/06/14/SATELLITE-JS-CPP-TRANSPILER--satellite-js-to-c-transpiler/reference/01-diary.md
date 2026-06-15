@@ -801,7 +801,7 @@ The most important implementation change is that `runtime/satellite_os.hpp` is n
 
 **Commit (code):** `e32ee61` — ":art: Add examples" (demo/emulator implementation commit already on `origin/main`)
 
-**Commit (code):** FINAL_COMMIT_PENDING — remaining docs/runner cleanup after final validation.
+**Commit (code):** `c69b59c52915b82c50b97ee1d6bee31d3554dd91` — "Document emulator demo ladder"
 
 ### What I did
 
