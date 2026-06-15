@@ -194,6 +194,34 @@ test('returns a mission IR for boot operations', () => {
   assert.match(missionIRToJSON(ir), /RegisterDevice/);
 });
 
+test('CLI supports --check, --dump-ir, diagnostics snippets, and source comments', async () => {
+  const ok = await execFileAsync('node', ['src/cli.js', 'examples/housekeeping.js', '--check']);
+  assert.match(ok.stdout, /OK: examples\/housekeeping\.js/);
+
+  const ir = await execFileAsync('node', ['src/cli.js', 'examples/housekeeping.js', '--dump-ir']);
+  assert.match(ir.stdout, /MissionProgram/);
+  assert.match(ir.stdout, /RegisterTask/);
+
+  const dir = await mkdtemp(join(tmpdir(), 'satjs-cpp-comments-'));
+  try {
+    const output = join(dir, 'housekeeping.cpp');
+    await execFileAsync('node', ['src/cli.js', 'examples/housekeeping.js', '--source-comments', '--out', output]);
+    const generated = await readFile(output, 'utf8');
+    assert.match(generated, /\/\/ JS line \d+/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+
+  await assert.rejects(
+    () => execFileAsync('node', ['src/cli.js', 'examples/bad-console.js', '--check']),
+    (error) => {
+      assert.match(error.stderr, /SATJS_FORBIDDEN_API/);
+      assert.match(error.stderr, /\^/);
+      return true;
+    },
+  );
+});
+
 test('CLI writes generated C++ to --out', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'satjs-cpp-'));
   try {

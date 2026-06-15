@@ -10,7 +10,9 @@
     "test": "node --test",
     "transpile:example": "node ./src/cli.js examples/housekeeping.js --out build/housekeeping.cpp",
     "compile:example": "npm run transpile:example && c++ -std=c++20 -Iruntime -Iexamples build/housekeeping.cpp examples/runner.cpp -o build/housekeeping",
-    "smoke": "npm test && npm run compile:example"
+    "smoke": "npm test && npm run compile:example && npm run check:example",
+    "check:example": "node ./src/cli.js examples/housekeeping.js --check",
+    "dump-ir:example": "node ./src/cli.js examples/housekeeping.js --dump-ir"
   },
   "keywords": [
     "satellite-os",
@@ -24,5 +26,13 @@
   },
   "dependencies": {
     "@babel/parser": "^7.28.5"
-  }
+  },
+  "homepage": "https://example.invalid/satellite-js-cpp-transpiler",
+  "files": [
+    "src/",
+    "runtime/",
+    "examples/",
+    "docs/",
+    "README.md"
+  ]
 }

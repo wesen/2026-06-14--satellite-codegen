@@ -25,9 +25,10 @@ const CPP_RESERVED = new Set([
 ]);
 
 export class SatelliteCppEmitter {
-  constructor({ filename = '<input>', runtimeHeader = 'satellite_os.hpp' } = {}) {
+  constructor({ filename = '<input>', runtimeHeader = 'satellite_os.hpp', sourceComments = false } = {}) {
     this.filename = filename;
     this.runtimeHeader = runtimeHeader;
+    this.sourceComments = sourceComments;
     this.systemIncludes = new Set(['<cstdint>', '<string>', '<vector>']);
     this.localIncludes = new Set([runtimeHeader]);
     this.satelliteImports = new Map();
@@ -123,6 +124,7 @@ export class SatelliteCppEmitter {
   }
 
   emitBootOperation(operation, writer) {
+    this.emitSourceComment(operation.statement ?? operation.node, writer);
     switch (operation.kind) {
       case 'RegisterDevice':
         return writer.line(`satellite::device::register_driver<${operation.driverType}>(${this.emitExpression(operation.name)}, ${this.emitExpression(operation.options)});`);
@@ -166,6 +168,7 @@ export class SatelliteCppEmitter {
   }
 
   emitStatement(node, writer) {
+    this.emitSourceComment(node, writer);
     switch (node.type) {
       case 'VariableDeclaration':
         return this.emitVariableDeclaration(node, writer);
@@ -196,6 +199,13 @@ export class SatelliteCppEmitter {
       default:
         return this.unsupported(node, `Unsupported statement node ${node.type}.`);
     }
+  }
+
+  emitSourceComment(node, writer) {
+    if (!this.sourceComments || !node?.loc?.start?.line) {
+      return;
+    }
+    writer.line(`// JS line ${node.loc.start.line}`);
   }
 
   emitBlockBody(block, writer) {
