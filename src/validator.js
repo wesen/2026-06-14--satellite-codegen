@@ -1,4 +1,5 @@
 import { TranspileError, diagnostic } from './diagnostics.js';
+import { analyzeResourceLifecycles } from './resource-analysis.js';
 import { validateDriverOptions, validateTelemetryValue } from './schemas.js';
 import { SATELLITE_MODULE, SATELLITE_NAMESPACES, isSatelliteNamespace } from './satellite-api.js';
 import { classifyValueExpression, isUint8ArrayOfCall } from './value-model.js';
@@ -29,6 +30,7 @@ export function validateMissionProgram(ast, filename = '<input>') {
 
   const context = collectImportContext(ast.program.body, diagnostics);
   validateTopLevelPolicy(ast.program.body, context, diagnostics);
+  analyzeResourceLifecycles(ast.program, context, diagnostics);
   visitNode(ast.program, (node) => validateMissionNode(node, context, diagnostics));
 
   throwIfDiagnostics(diagnostics, filename);

@@ -150,6 +150,30 @@ test('validates mission value shapes, byte literals, and driver option schemas',
   );
 });
 
+test('analyzes resource lifecycle for bus and device handles', () => {
+  assertDiagnostic(
+    `import { bus, task } from 'satellite-os'; task.once('boot', async () => { const i2c = await bus.open('i2c0', {}) })`,
+    'SATJS_RESOURCE_LIFECYCLE',
+    /not closed/,
+  );
+  assertDiagnostic(
+    `import { bus, task } from 'satellite-os'; task.once('boot', async (ctx) => { const i2c = await bus.open('i2c0', {}); if (ctx.iteration > 1) await i2c.close() })`,
+    'SATJS_RESOURCE_LIFECYCLE',
+    /conditional path/,
+  );
+  assertDiagnostic(
+    `import { bus, task } from 'satellite-os'; task.once('boot', async () => { const a = await bus.open('i2c0', {}); const b = await bus.open('i2c0', {}); await a.close(); await b.close() })`,
+    'SATJS_RESOURCE_INTERLEAVING',
+    /opened again/,
+  );
+
+  const returned = `import { bus, task } from 'satellite-os'; function makeBus() { const i2c = bus.open('i2c0', {}); return i2c } task.once('boot', () => {})`;
+  assert.doesNotThrow(() => transpile(returned, { filename: 'factory.js' }));
+
+  const transferred = `import { bus, task } from 'satellite-os'; task.once('boot', async () => { const i2c = await bus.open('i2c0', {}); transferResource(i2c) })`;
+  assert.doesNotThrow(() => transpile(transferred, { filename: 'transfer.js' }));
+});
+
 test('returns a mission IR for boot operations', () => {
   const source = `
     import { device, task } from 'satellite-os'
