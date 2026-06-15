@@ -32,7 +32,7 @@ test('transpiles satellite-os imports, scheduler registrations, and bus calls', 
 
   assert.match(code, /#include "satellite_os\.hpp"/);
   assert.match(code, /auto selftestTask\(\)/);
-  assert.match(code, /satellite::task::once\("boot-selftest", \[&\]\(auto&&\.\.\. args\) \{ return selftestTask\(args\.\.\.\); \}\);/);
+  assert.match(code, /satellite::task::once\("boot-selftest", \[&\]\(\) \{ return selftestTask\(\); \}\);/);
   assert.match(code, /satellite::bus::open\("i2c0", satellite::Object\{\{"clockHz", 400000\}\}\)/);
   assert.match(code, /satellite::Bytes\{0x00\}/);
   assert.match(code, /satellite::telemetry::emit\("eps\.raw_temperature_frame", response\);/);

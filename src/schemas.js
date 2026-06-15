@@ -103,7 +103,7 @@ export function validateTelemetryValue(metricNameNode, valueNode, diagnostics) {
 
   if (classified.kind === VALUE_KINDS.ARRAY) {
     for (const element of classified.elements) {
-      if (![VALUE_KINDS.INTEGER, VALUE_KINDS.FLOAT, VALUE_KINDS.BOOLEAN, VALUE_KINDS.IDENTIFIER].includes(element.kind)) {
+      if (![VALUE_KINDS.INTEGER, VALUE_KINDS.FLOAT, VALUE_KINDS.BOOLEAN, VALUE_KINDS.IDENTIFIER, VALUE_KINDS.REFERENCE].includes(element.kind)) {
         diagnostics.push(diagnostic({
           code: 'SATJS_TELEMETRY_VALUE',
           message: `telemetry arrays cannot contain ${element.kind} values.`,

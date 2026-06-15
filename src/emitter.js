@@ -129,13 +129,18 @@ export class SatelliteCppEmitter {
       case 'RegisterDevice':
         return writer.line(`satellite::device::register_driver<${operation.driverType}>(${this.emitExpression(operation.name)}, ${this.emitExpression(operation.options)});`);
       case 'RegisterFaultHandler':
-        return writer.line(`satellite::fault::handle(${this.emitExpression(operation.faultName)}, ${this.emitCallbackRef(operation.callback)});`);
+        return writer.line(`satellite::fault::handle(${this.emitExpression(operation.faultName)}, ${this.emitCallbackRef(operation.callback, 'context')});`);
       case 'RegisterTask': {
         const args = [this.emitExpression(operation.name)];
+        let callbackMode = 'none';
         if (operation.mode === 'every') {
           args.push(this.emitExpression(operation.period));
+          callbackMode = 'context';
         }
-        args.push(this.emitCallbackRef(operation.callback));
+        if (operation.mode === 'on') {
+          callbackMode = 'payload';
+        }
+        args.push(this.emitCallbackRef(operation.callback, callbackMode));
         return writer.line(`satellite::task::${operation.mode}(${args.join(', ')});`);
       }
       case 'StartScheduler':
@@ -147,9 +152,9 @@ export class SatelliteCppEmitter {
     }
   }
 
-  emitCallbackRef(callback) {
+  emitCallbackRef(callback, mode = 'auto') {
     if (callback.kind === 'CallbackRef') {
-      return this.emitCallbackArgument(callback.node);
+      return this.emitCallbackArgument(callback.node, mode);
     }
     if (callback.kind === 'InlineCallback') {
       return this.emitExpression(callback.node);
@@ -492,9 +497,18 @@ export class SatelliteCppEmitter {
     return `satellite::task::${method}(${loweredArgs.join(', ')})`;
   }
 
-  emitCallbackArgument(node) {
+  emitCallbackArgument(node, mode = 'auto') {
     if (node.type === 'Identifier') {
       const name = this.emitIdentifier(node);
+      if (mode === 'none') {
+        return `[&]() { return ${name}(); }`;
+      }
+      if (mode === 'context') {
+        return `[&](auto&& ctx) { return ${name}(ctx); }`;
+      }
+      if (mode === 'payload') {
+        return `[&](auto&& payload) { return ${name}(payload); }`;
+      }
       return `[&](auto&&... args) { return ${name}(args...); }`;
     }
     return this.emitExpression(node);

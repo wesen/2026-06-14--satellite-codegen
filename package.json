@@ -10,9 +10,14 @@
     "test": "node --test",
     "transpile:example": "node ./src/cli.js examples/housekeeping.js --out build/housekeeping.cpp",
     "compile:example": "npm run transpile:example && c++ -std=c++20 -Iruntime -Iexamples build/housekeeping.cpp examples/runner.cpp -o build/housekeeping",
-    "smoke": "npm test && npm run compile:example && npm run check:example",
+    "smoke": "npm test && npm run compile:example && npm run check:example && npm run validate:demos",
     "check:example": "node ./src/cli.js examples/housekeeping.js --check",
-    "dump-ir:example": "node ./src/cli.js examples/housekeeping.js --dump-ir"
+    "dump-ir:example": "node ./src/cli.js examples/housekeeping.js --dump-ir",
+    "check:demos": "make demos-check",
+    "transpile:demos": "make demos-transpile",
+    "compile:demos": "make demos-compile",
+    "run:demos": "make demos-run",
+    "validate:demos": "make demos-validate"
   },
   "keywords": [
     "satellite-os",

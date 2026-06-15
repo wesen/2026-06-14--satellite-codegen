@@ -10,6 +10,7 @@ export const VALUE_KINDS = Object.freeze({
   ARRAY: 'array',
   OBJECT: 'object',
   IDENTIFIER: 'identifier',
+  REFERENCE: 'reference',
   UNKNOWN_CALL: 'unknown-call',
 });
 
@@ -33,6 +34,8 @@ export function classifyValueExpression(node) {
       return classifyNumber(node);
     case 'Identifier':
       return { ok: true, kind: VALUE_KINDS.IDENTIFIER, name: node.name, node };
+    case 'MemberExpression':
+      return { ok: true, kind: VALUE_KINDS.REFERENCE, node };
     case 'ArrayExpression':
       return classifyArray(node);
     case 'ObjectExpression':

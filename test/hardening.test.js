@@ -39,7 +39,7 @@ auto boot() {
 }
 
 void satellite_main() {
-  satellite::task::once("boot", [&](auto&&... args) { return boot(args...); });
+  satellite::task::once("boot", [&]() { return boot(); });
   satellite::task::start();
 }
 `);
