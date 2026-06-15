@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import test from 'node:test';
-import { TranspileError, transpile } from '../src/index.js';
+import { missionIRToJSON, TranspileError, transpile } from '../src/index.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -127,13 +127,33 @@ test('enforces top-level boot wiring policy and API contracts', () => {
   );
 });
 
+test('returns a mission IR for boot operations', () => {
+  const source = `
+    import { device, task } from 'satellite-os'
+    import { EPSDriver } from './drivers/eps.js'
+    function boot() {}
+    device.register('eps', EPSDriver, { bus: 'i2c0', address: 0x20 })
+    task.once('boot', boot)
+    task.start()
+  `;
+
+  const { ir } = transpile(source, { filename: 'main.js' });
+  assert.deepEqual(ir.boot.map((operation) => operation.kind), [
+    'RegisterDevice',
+    'RegisterTask',
+    'StartScheduler',
+  ]);
+  assert.equal(ir.boot[1].mode, 'once');
+  assert.match(missionIRToJSON(ir), /RegisterDevice/);
+});
+
 test('CLI writes generated C++ to --out', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'satjs-cpp-'));
   try {
     const output = join(dir, 'housekeeping.cpp');
     await execFileAsync('node', ['src/cli.js', 'examples/housekeeping.js', '--out', output]);
     const generated = await readFile(output, 'utf8');
-    assert.match(generated, /auto satellite_main\(\)/);
+    assert.match(generated, /void satellite_main\(\)/);
     assert.match(generated, /satellite::task::every/);
   } finally {
     await rm(dir, { recursive: true, force: true });

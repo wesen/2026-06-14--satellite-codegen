@@ -34,33 +34,10 @@ export class SatelliteCppEmitter {
     this.localImports = new Map();
   }
 
-  emit(ast) {
-    if (ast.type !== 'File' || ast.program?.type !== 'Program') {
-      this.unsupported(ast, 'Expected a Babel File AST with a Program body.');
-    }
-
-    this.collectImports(ast.program.body);
-
-    const functions = [];
-    const topLevel = [];
-
-    for (const statement of ast.program.body) {
-      if (statement.type === 'ImportDeclaration') {
-        continue;
-      }
-      if (statement.type === 'FunctionDeclaration') {
-        functions.push(statement);
-        continue;
-      }
-      if (statement.type === 'ExportNamedDeclaration' && statement.declaration?.type === 'FunctionDeclaration') {
-        functions.push(statement.declaration);
-        continue;
-      }
-      if (statement.type === 'ExportNamedDeclaration' && statement.declaration) {
-        topLevel.push(statement.declaration);
-        continue;
-      }
-      topLevel.push(statement);
+  emitMissionProgram(mission) {
+    this.satelliteImports = new Map(mission.satelliteImports.map(({ local, imported }) => [local, imported]));
+    for (const include of mission.localIncludes) {
+      this.localIncludes.add(include);
     }
 
     const writer = new CppWriter();
@@ -76,21 +53,40 @@ export class SatelliteCppEmitter {
     }
     writer.line();
 
-    for (const fn of functions) {
-      this.emitFunctionDeclaration(fn, writer);
+    for (const fn of mission.functions) {
+      this.emitFunctionDeclaration(fn.node, writer);
       writer.line();
     }
 
-    writer.block('auto satellite_main()', () => {
-      if (topLevel.length === 0) {
+    writer.block('void satellite_main()', () => {
+      if (mission.constants.length === 0 && mission.boot.length === 0) {
         writer.line('// No top-level scheduler or hardware registration statements were found.');
       }
-      for (const statement of topLevel) {
-        this.emitStatement(statement, writer);
+      for (const declaration of mission.constants) {
+        this.emitVariableDeclaration(declaration.node, writer);
+      }
+      for (const operation of mission.boot) {
+        this.emitBootOperation(operation, writer);
       }
     });
 
     return writer.toString();
+  }
+
+  emit(ast) {
+    this.collectImports(ast.program.body);
+    const mission = {
+      satelliteImports: [...this.satelliteImports.entries()].map(([local, imported]) => ({ local, imported })),
+      localIncludes: [...this.localIncludes].filter((include) => include !== this.runtimeHeader),
+      functions: ast.program.body
+        .filter((statement) => statement.type === 'FunctionDeclaration')
+        .map((node) => ({ kind: 'MissionFunction', name: node.id.name, node })),
+      constants: [],
+      boot: ast.program.body
+        .filter((statement) => statement.type !== 'ImportDeclaration' && statement.type !== 'FunctionDeclaration')
+        .map((statement) => ({ kind: 'RawStatement', statement, node: statement })),
+    };
+    return this.emitMissionProgram(mission);
   }
 
   collectImports(statements) {
@@ -124,6 +120,39 @@ export class SatelliteCppEmitter {
         'Move platform-specific libraries behind satellite-os drivers, or add an explicit lowering rule.',
       );
     }
+  }
+
+  emitBootOperation(operation, writer) {
+    switch (operation.kind) {
+      case 'RegisterDevice':
+        return writer.line(`satellite::device::register_driver<${operation.driverType}>(${this.emitExpression(operation.name)}, ${this.emitExpression(operation.options)});`);
+      case 'RegisterFaultHandler':
+        return writer.line(`satellite::fault::handle(${this.emitExpression(operation.faultName)}, ${this.emitCallbackRef(operation.callback)});`);
+      case 'RegisterTask': {
+        const args = [this.emitExpression(operation.name)];
+        if (operation.mode === 'every') {
+          args.push(this.emitExpression(operation.period));
+        }
+        args.push(this.emitCallbackRef(operation.callback));
+        return writer.line(`satellite::task::${operation.mode}(${args.join(', ')});`);
+      }
+      case 'StartScheduler':
+        return writer.line('satellite::task::start();');
+      case 'RawStatement':
+        return this.emitStatement(operation.statement, writer);
+      default:
+        return this.unsupported(operation.node, `Unsupported boot operation ${operation.kind}.`);
+    }
+  }
+
+  emitCallbackRef(callback) {
+    if (callback.kind === 'CallbackRef') {
+      return this.emitCallbackArgument(callback.node);
+    }
+    if (callback.kind === 'InlineCallback') {
+      return this.emitExpression(callback.node);
+    }
+    return this.unsupported(callback.node, `Unsupported callback ${callback.kind}.`);
   }
 
   emitFunctionDeclaration(node, writer) {
