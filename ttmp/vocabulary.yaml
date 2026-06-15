@@ -5,6 +5,12 @@ topics:
       description: Backend services
     - slug: websocket
       description: WebSocket lifecycle & events
+    - slug: codegen
+      description: Code generation tools, emitted code, and generated-code workflows
+    - slug: satellite-js
+      description: Satellite onboard JavaScript API and mission-script tooling
+    - slug: transpiler
+      description: Source-to-source compiler and transpilation work
 docTypes:
     - slug: design-doc
       description: Structured rationale and architecture notes
