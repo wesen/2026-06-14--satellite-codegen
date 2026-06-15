@@ -127,6 +127,29 @@ test('enforces top-level boot wiring policy and API contracts', () => {
   );
 });
 
+test('validates mission value shapes, byte literals, and driver option schemas', () => {
+  assertDiagnostic(
+    `import { device } from 'satellite-os'; import { EPSDriver } from './drivers/eps.js'; device.register('eps', EPSDriver, { bus: 'i2c0', address: '0x20' })`,
+    'SATJS_DRIVER_OPTIONS',
+    /address.*integer/,
+  );
+  assertDiagnostic(
+    `import { task, telemetry } from 'satellite-os'; task.once('boot', () => telemetry.emit('eps.status', 'ok'))`,
+    'SATJS_TELEMETRY_VALUE',
+    /must not be strings/,
+  );
+  assertDiagnostic(
+    `import { task, telemetry } from 'satellite-os'; task.once('boot', () => telemetry.emit('eps.frame', Uint8Array.of(999)))`,
+    'SATJS_VALUE_SHAPE',
+    /0\.\.255/,
+  );
+  assertDiagnostic(
+    `import { task, telemetry } from 'satellite-os'; task.once('boot', () => telemetry.emit('eps.object', { volts: 3.3 }))`,
+    'SATJS_TELEMETRY_VALUE',
+    /arbitrary objects/,
+  );
+});
+
 test('returns a mission IR for boot operations', () => {
   const source = `
     import { device, task } from 'satellite-os'

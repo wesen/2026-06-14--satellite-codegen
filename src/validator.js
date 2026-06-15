@@ -1,5 +1,7 @@
 import { TranspileError, diagnostic } from './diagnostics.js';
+import { validateDriverOptions, validateTelemetryValue } from './schemas.js';
 import { SATELLITE_MODULE, SATELLITE_NAMESPACES, isSatelliteNamespace } from './satellite-api.js';
+import { classifyValueExpression, isUint8ArrayOfCall } from './value-model.js';
 
 const VISITOR_SKIP_KEYS = new Set([
   'type',
@@ -27,7 +29,7 @@ export function validateMissionProgram(ast, filename = '<input>') {
 
   const context = collectImportContext(ast.program.body, diagnostics);
   validateTopLevelPolicy(ast.program.body, context, diagnostics);
-  visitNode(ast.program, (node) => validateForbiddenNode(node, diagnostics));
+  visitNode(ast.program, (node) => validateMissionNode(node, context, diagnostics));
 
   throwIfDiagnostics(diagnostics, filename);
   return { diagnostics: [] };
@@ -220,6 +222,7 @@ function validateDeviceRegister(call, context, diagnostics) {
       hint: 'The second argument becomes a C++ template type and must resolve to a local header include.',
     }));
   }
+  validateDriverOptions(call.arguments[2], diagnostics);
 }
 
 function validateCallbackShape(callbackArg, apiName, diagnostics) {
@@ -237,12 +240,28 @@ function validateCallbackShape(callbackArg, apiName, diagnostics) {
   }));
 }
 
-function validateForbiddenNode(node, diagnostics) {
+function validateMissionNode(node, context, diagnostics) {
+  validateValueShape(node, diagnostics);
   if (node.type === 'CallExpression') {
     validateForbiddenCall(node, diagnostics);
+    validateTelemetryCall(node, context, diagnostics);
   }
   if (node.type === 'NewExpression') {
     validateForbiddenNew(node, diagnostics);
+  }
+}
+
+function validateValueShape(node, diagnostics) {
+  if (!['ObjectExpression', 'ArrayExpression', 'NumericLiteral'].includes(node.type) && !isUint8ArrayOfCall(node)) {
+    return;
+  }
+  const classified = classifyValueExpression(node);
+  if (!classified.ok) {
+    diagnostics.push(diagnostic({
+      code: 'SATJS_VALUE_SHAPE',
+      message: classified.reason,
+      node: classified.node,
+    }));
   }
 }
 
@@ -298,6 +317,20 @@ function validateForbiddenCall(node, diagnostics) {
       node,
       hint: 'Avoid reflection so generated C++ remains deterministic and auditable.',
     }));
+  }
+}
+
+function validateTelemetryCall(node, context, diagnostics) {
+  const parts = getStaticMemberParts(node.callee);
+  if (!parts || parts.length !== 2) {
+    return;
+  }
+  const namespaceName = resolveSatelliteImport(parts[0], context);
+  if (namespaceName === 'telemetry' && parts[1] === 'emit') {
+    validateArity(node, 2, 'telemetry.emit', diagnostics);
+    if (node.arguments.length >= 2) {
+      validateTelemetryValue(node.arguments[0], node.arguments[1], diagnostics);
+    }
   }
 }
 
