@@ -26,3 +26,16 @@ Validated docmgr ticket and uploaded design bundle to reMarkable at /ai/2026/06/
 - /home/manuel/code/wesen/2026-06-14--satellite-codegen/ttmp/2026/06/14/SATELLITE-JS-CPP-TRANSPILER--satellite-js-to-c-transpiler/design-doc/01-satellite-js-to-c-transpiler-design-and-implementation-guide.md — Uploaded design bundle source
 - /home/manuel/code/wesen/2026-06-14--satellite-codegen/ttmp/2026/06/14/SATELLITE-JS-CPP-TRANSPILER--satellite-js-to-c-transpiler/tasks.md — Upload task marked complete
 
+
+## 2026-06-14
+
+Completed Phases 2-8, added docs and Makefile, verified generated C++ compiles/links, and prepared final push.
+
+### Related Files
+
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/Makefile — Final compile/smoke workflow
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/src/ir.js — Mission IR lowering
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/src/resource-analysis.js — Resource lifecycle checks
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/src/validator.js — Mission validation pass
+- /home/manuel/code/wesen/2026-06-14--satellite-codegen/test/hardening.test.js — Hardening tests
+

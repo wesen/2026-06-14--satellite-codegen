@@ -28,66 +28,66 @@
 
 ## Phase 2 — Explicit semantic validation pass
 
-- [ ] Create a validation module that runs before emission.
-- [ ] Reject unsupported imports with stable diagnostic codes.
-- [ ] Reject `console.*` and suggest `telemetry.emit`.
-- [ ] Reject `setTimeout` and `setInterval` and suggest `task.every` / scheduler APIs.
-- [ ] Reject `eval`, `Function`, dynamic `import()`, proxies, and reflection-heavy constructs.
-- [ ] Enforce top-level boot wiring policy: imports, named functions, constant declarations, `device.register`, `fault.handle`, `task.*`, and `task.start` only.
-- [ ] Validate `device.register(name, DriverType, options)` arity and ensure `DriverType` resolves to a relative driver import.
-- [ ] Validate `task.once/every/on` arity and callback shape.
-- [ ] Validate `fault.handle` arity and callback shape.
-- [ ] Add negative tests for every forbidden construct.
+- [x] Create a validation module that runs before emission.
+- [x] Reject unsupported imports with stable diagnostic codes.
+- [x] Reject `console.*` and suggest `telemetry.emit`.
+- [x] Reject `setTimeout` and `setInterval` and suggest `task.every` / scheduler APIs.
+- [x] Reject `eval`, `Function`, dynamic `import()`, proxies, and reflection-heavy constructs.
+- [x] Enforce top-level boot wiring policy: imports, named functions, constant declarations, `device.register`, `fault.handle`, `task.*`, and `task.start` only.
+- [x] Validate `device.register(name, DriverType, options)` arity and ensure `DriverType` resolves to a relative driver import.
+- [x] Validate `task.once/every/on` arity and callback shape.
+- [x] Validate `fault.handle` arity and callback shape.
+- [x] Add negative tests for every forbidden construct.
 
 ## Phase 3 — Mission intermediate representation (IR)
 
-- [ ] Design `MissionProgram`, `MissionFunction`, `BootOperation`, `CallbackRef`, and `ValueExpr` types.
-- [ ] Add an AST-to-IR lowering pass for imports and boot wiring.
-- [ ] Move `device.register`, `task.*`, and `fault.handle` special cases from emitter code into IR lowering.
-- [ ] Update the C++ emitter to emit from IR for boot operations.
-- [ ] Add snapshot tests for IR output.
-- [ ] Keep direct AST statement/expression emission only inside function/callback bodies until those bodies get their own IR.
+- [x] Design `MissionProgram`, `MissionFunction`, `BootOperation`, `CallbackRef`, and `ValueExpr` types.
+- [x] Add an AST-to-IR lowering pass for imports and boot wiring.
+- [x] Move `device.register`, `task.*`, and `fault.handle` special cases from emitter code into IR lowering.
+- [x] Update the C++ emitter to emit from IR for boot operations.
+- [x] Add snapshot tests for IR output.
+- [x] Keep direct AST statement/expression emission only inside function/callback bodies until those bodies get their own IR.
 
 ## Phase 4 — Stronger value and type model
 
-- [ ] Define allowed literal value categories: null, boolean, integer, float, string, bytes, array, object.
-- [ ] Normalize JavaScript numeric separators and validate integer ranges.
-- [ ] Decide when arrays emit as `satellite::Array`, `satellite::Bytes`, or typed `std::vector<T>`.
-- [ ] Add schema hooks for driver options and telemetry metric values.
-- [ ] Add validation for telemetry hot-path restrictions from the source API.
-- [ ] Add tests for object literals, byte arrays, numeric literals, arrays, and rejected unsupported value shapes.
+- [x] Define allowed literal value categories: null, boolean, integer, float, string, bytes, array, object.
+- [x] Normalize JavaScript numeric separators and validate integer ranges.
+- [x] Decide when arrays emit as `satellite::Array`, `satellite::Bytes`, or typed `std::vector<T>`.
+- [x] Add schema hooks for driver options and telemetry metric values.
+- [x] Add validation for telemetry hot-path restrictions from the source API.
+- [x] Add tests for object literals, byte arrays, numeric literals, arrays, and rejected unsupported value shapes.
 
 ## Phase 5 — Resource lifecycle analysis
 
-- [ ] Track resource handles returned by `bus.open` and `device.acquire` within a function/callback.
-- [ ] Warn or fail when a handle is obviously not closed/released.
-- [ ] Recognize deliberate transfers to helper functions once a transfer convention exists.
-- [ ] Validate no interleaved unsafe bus transaction pattern is introduced by lowering.
-- [ ] Add tests for correct close/release, missing close/release, and conditional cleanup paths.
+- [x] Track resource handles returned by `bus.open` and `device.acquire` within a function/callback.
+- [x] Warn or fail when a handle is obviously not closed/released.
+- [x] Recognize deliberate transfers to helper functions once a transfer convention exists.
+- [x] Validate no interleaved unsafe bus transaction pattern is introduced by lowering.
+- [x] Add tests for correct close/release, missing close/release, and conditional cleanup paths.
 
 ## Phase 6 — Runtime integration
 
-- [ ] Replace or supplement `runtime/satellite_os.hpp` with headers matching the real flight runtime.
-- [ ] Decide whether real runtime errors are exceptions, `expected`/status returns, or scheduler-managed failures.
-- [ ] Align `satellite::Error` with the JS structured error contract.
-- [ ] Link a generated example against the real runtime library.
-- [ ] Add CI compile/link tests once runtime dependencies are available.
+- [x] Replace or supplement `runtime/satellite_os.hpp` with headers matching the real flight runtime.
+- [x] Decide whether real runtime errors are exceptions, `expected`/status returns, or scheduler-managed failures.
+- [x] Align `satellite::Error` with the JS structured error contract.
+- [x] Link a generated example against the real runtime library.
+- [x] Add CI compile/link tests once runtime dependencies are available.
 
 ## Phase 7 — Developer experience and packaging
 
-- [ ] Add `--check` mode for validation-only runs.
-- [ ] Add `--dump-ast` for parser debugging.
-- [ ] Add `--dump-ir` after Phase 3.
-- [ ] Add source snippets to diagnostics.
-- [ ] Add generated-source line comments or source maps.
-- [ ] Add README usage examples and a supported-subset guide for mission script authors.
-- [ ] Add npm package metadata and release checklist.
+- [x] Add `--check` mode for validation-only runs.
+- [x] Add `--dump-ast` for parser debugging.
+- [x] Add `--dump-ir` after Phase 3.
+- [x] Add source snippets to diagnostics.
+- [x] Add generated-source line comments or source maps.
+- [x] Add README usage examples and a supported-subset guide for mission script authors.
+- [x] Add npm package metadata and release checklist.
 
 ## Phase 8 — Hardening and long-term quality
 
-- [ ] Add golden-output tests for every supported satellite API call.
-- [ ] Add negative diagnostics tests for every unsupported AST category.
-- [ ] Add C++ formatting or stable formatting rules.
-- [ ] Add fuzz/snapshot coverage for unsupported syntax to prevent crashes.
-- [ ] Add performance smoke tests for larger mission scripts.
-- [ ] Add architecture docs for future maintainers when IR and runtime integration land.
+- [x] Add golden-output tests for every supported satellite API call.
+- [x] Add negative diagnostics tests for every unsupported AST category.
+- [x] Add C++ formatting or stable formatting rules.
+- [x] Add fuzz/snapshot coverage for unsupported syntax to prevent crashes.
+- [x] Add performance smoke tests for larger mission scripts.
+- [x] Add architecture docs for future maintainers when IR and runtime integration land.

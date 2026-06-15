@@ -10,10 +10,20 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: Makefile
+      Note: Final requested example compile/run workflow
+    - Path: README.md
+      Note: Final README requested by user
+    - Path: docs/release-checklist.md
+      Note: Release/handoff documentation
+    - Path: docs/supported-subset.md
+      Note: Script-author documentation
     - Path: runtime/satellite_os.hpp
       Note: Compile smoke target and runtime-shape assumptions recorded in Step 2
     - Path: src/emitter.js
       Note: Phase 1 implementation and tricky lowering fixes recorded in Step 2
+    - Path: test/hardening.test.js
+      Note: Phase 8 hardening validation
     - Path: ttmp/2026/06/14/SATELLITE-JS-CPP-TRANSPILER--satellite-js-to-c-transpiler/design-doc/01-satellite-js-to-c-transpiler-design-and-implementation-guide.md
       Note: Step 1 design deliverable
     - Path: ttmp/2026/06/14/SATELLITE-JS-CPP-TRANSPILER--satellite-js-to-c-transpiler/tasks.md
@@ -24,6 +34,7 @@ LastUpdated: 2026-06-15T02:55:00-04:00
 WhatFor: Record what changed, why, what failed, what was tricky, and how to validate or continue the transpiler work.
 WhenToUse: Read before resuming SATELLITE-JS-CPP-TRANSPILER implementation or reviewing its design/code changes.
 ---
+
 
 
 # Diary
@@ -432,4 +443,269 @@ remarquee upload bundle \
   --remote-dir "/ai/2026/06/14/SATELLITE-JS-CPP-TRANSPILER" \
   --toc-depth 2 \
   --non-interactive
+```
+
+## Step 4: Backfill Phase 2 Through Phase 8 Implementation
+
+This step records the rapid continuation from the Phase 1 MVP through the remaining implementation phases. The work converted the transpiler from a direct parser/emitter prototype into a more complete toolchain: semantic validation, mission IR, value-model checks, resource lifecycle analysis, runtime compile/link smoke integration, CLI developer tooling, user docs, and hardening tests.
+
+The important pattern was to keep each phase narrow. Validation rejects mission-policy violations before C++ emission, IR isolates boot wiring from Babel AST details, value/schema checks enforce API contracts, resource analysis catches obvious leaks, and the Makefile/CI/docs make the project reviewable and repeatable.
+
+### Prompt Context
+
+**User prompt (verbatim):** "continue all the way through to phase 8, i'm making dinner in the meantime and want you to be done fully"
+
+**Follow-up user prompt (verbatim):** "continue keeping a detailed diary as you work. don't forget, and backfill if necessary."
+
+**Additional user prompt (verbatim):** "write a nice README.md if you haven't and some docs as well."
+
+**Assistant interpretation:** Finish the entire phased implementation plan, not just the first vertical slice, and backfill the diary with the actual phase-by-phase work and validation results.
+
+**Inferred user intent:** The user wants to return from dinner to a completed, committed, documented, and validated project rather than a partially implemented compiler.
+
+**Commit (code):** `253cafabcc30fd5a9561317331adfd63d5275a0a` — "Add mission script validation pass"
+
+**Commit (code):** `c76128ec326e928ce101c1541910c6ac896eac15` — "Introduce mission IR lowering"
+
+**Commit (code):** `268b24de8b3d113b87042bd9830796ebd5d238d0` — "Add mission value model validation"
+
+**Commit (code):** `a60482c8adec0620426d52c86865b0df4dfece3e` — "Analyze satellite resource lifecycles"
+
+**Commit (code):** `a567494ab12428f18da5fed0bb7f5c251f32bbd7` — "Add runtime link smoke integration"
+
+**Commit (code):** `6732f1221ed56d401f51aa6ba67fdb6c75ab371f` — "Improve CLI developer experience and docs"
+
+### What I did
+
+- Added `src/validator.js` and wired it through `src/index.js` so validation runs before emission.
+- Added stable diagnostics for unsupported imports, forbidden runtime APIs, invalid top-level forms, API arity, callback shape, and relative driver import requirements.
+- Added `src/ast-utils.js` and `src/ir.js` so boot wiring lowers into a `MissionProgram` IR.
+- Updated `src/emitter.js` to emit boot operations from IR while still emitting supported function/callback body AST directly.
+- Added `src/value-model.js` to classify null, booleans, integers, floats, strings, byte arrays, arrays, objects, identifiers, and unknown calls.
+- Added `src/schemas.js` to validate driver options and telemetry values.
+- Added `src/resource-analysis.js` to detect obvious bus/device resource lifecycle mistakes.
+- Added `runtime/README.md`, `examples/runner.cpp`, `npm run compile:example`, `npm run smoke`, and GitHub Actions CI for runtime compile/link smoke coverage.
+- Expanded `src/cli.js` with `--check`, `--dump-ast`, `--dump-ir`, and `--source-comments`.
+- Improved `src/diagnostics.js` to include source snippets and carets in CLI diagnostics.
+- Added `README.md`, `docs/supported-subset.md`, and `docs/release-checklist.md`.
+- Added `examples/bad-console.js` for CLI diagnostic testing.
+- Added tests covering validation, IR output, CLI tools, docs-facing behavior, and hardening.
+
+### Why
+
+- Phase 2 validation makes unsupported mission code fail before C++ generation.
+- Phase 3 IR prevents boot-wiring code generation from depending directly on Babel AST details forever.
+- Phase 4 value checks are necessary because the source API explicitly restricts telemetry and bus/driver value shapes.
+- Phase 5 lifecycle analysis is needed because the source API is resource-oriented and leaks should be caught before generated code reaches firmware.
+- Phase 6 runtime integration ensures generated C++ does not merely look plausible; it compiles and links.
+- Phase 7 docs/CLI work makes the project usable by script authors and future maintainers.
+- Phase 8 hardening tests reduce regression risk and document expected unsupported-syntax behavior.
+
+### What worked
+
+- The validation pass cleanly catches policy violations with stable diagnostic codes.
+- The IR pass successfully represents boot operations and supports JSON dumping.
+- The value model and schema checks catch unsafe byte literals, invalid driver option types, telemetry strings, and telemetry object blobs.
+- Resource analysis catches missing close/release, conditional-only cleanup, and opening the same bus twice before closing the first handle.
+- The runtime shim plus runner can link generated C++ into `build/housekeeping`.
+- `npm test`, `npm run smoke`, and later `make smoke` pass.
+
+### What didn't work
+
+- The first hardening test expected only messages matching `/Unsupported|not supported|must/`, but one valid diagnostic said:
+
+```text
+Only simple identifier variable declarations are supported in the first implementation.
+```
+
+- The fix was to broaden the assertion to a case-insensitive pattern that accepts `supported` as well as `unsupported`, `not supported`, and `must`.
+- A large multi-edit attempt to modernize the entire design document failed because one repeated text block was not unique. Rather than risk a destructive rewrite, I added a focused completion addendum and updated relations/changelog.
+
+### What I learned
+
+- Validation, IR, and emission need separate responsibilities even in a small compiler.
+- Runtime compile/link smoke testing catches different mistakes than JS tests.
+- Conservative resource analysis is useful even when it is not fully path-sensitive or interprocedural.
+- Diagnostics tests should assert stable diagnostic codes more strongly than exact prose when prose is intentionally human-friendly.
+
+### What was tricky to build
+
+- Resource lifecycle analysis was the trickiest Phase 5 piece. The implementation had to recognize handles opened by `bus.open` and `device.acquire`, closure through `handle.close()` or `device.release(name)`, deliberate transfer through returns or `transferResource(handle)`, and conditional cleanup that does not cover all paths. The current pass is intentionally conservative and same-function only.
+- IR integration was also subtle because function bodies still use direct AST emission. The compromise is that boot wiring is IR-based now, while callback/function body lowering remains direct until a later typed body IR is worth the complexity.
+- CLI `--dump-ir` had to validate the source before dumping IR so users do not inspect IR for invalid mission scripts.
+
+### What warrants a second pair of eyes
+
+- Review `src/resource-analysis.js` for false positives and false negatives around conditionals and helper transfers.
+- Review `src/schemas.js` telemetry restrictions against real mission telemetry conventions.
+- Review `src/ir.js` and `src/emitter.js` together to ensure no boot operation bypasses validation or emits surprising C++.
+- Review `runtime/README.md` to make sure future users do not mistake the shim for flight runtime code.
+
+### What should be done in the future
+
+- Replace the shim with the real flight runtime adapter when available.
+- Introduce typed function-body IR if generated callback bodies become more complex.
+- Add line-source mapping beyond simple `// JS line N` comments if operators need traceability from compiled artifacts back to mission JS.
+
+### Code review instructions
+
+- Review in phase order:
+  - `src/validator.js`
+  - `src/ir.js`
+  - `src/value-model.js`
+  - `src/schemas.js`
+  - `src/resource-analysis.js`
+  - `src/emitter.js`
+  - `src/cli.js`
+- Then review user-facing docs:
+  - `README.md`
+  - `docs/supported-subset.md`
+  - `docs/release-checklist.md`
+  - `runtime/README.md`
+- Validate with:
+
+```bash
+npm test
+npm run smoke
+```
+
+### Technical details
+
+Validation commands used during this phase:
+
+```bash
+npm test
+npm run transpile:example
+c++ -std=c++20 -Iruntime -Iexamples -c build/housekeeping.cpp -o build/housekeeping.o
+npm run compile:example
+npm run smoke
+```
+
+## Step 5: Add Makefile, Verify C++ Compilation, and Prepare Final Push
+
+This step addressed the final handoff requests: add a Makefile for examples, make sure generated C++ compiles, commit all remaining changes, update the diary before pushing, and push the branch. It also records the final hardening test and documentation updates that were pending after the Phase 8 implementation.
+
+The Makefile is now the easiest local entrypoint for a reviewer. It wraps install/test/check/transpile/compile/run/smoke/debug/doc commands and compiles the generated example with the runtime shim and C++ runner.
+
+### Prompt Context
+
+**User prompt (verbatim):** "commit all the things and push"
+
+**Follow-up user prompt (verbatim):** "add Makefile to run and compile the examples, and make sure the C++ compiles"
+
+**Additional user prompt (verbatim):** "everytim you commit from now on, also push. update the diary before each push"
+
+**Assistant interpretation:** Before pushing, update the diary, add a Makefile that can generate and compile the example, run validation, commit every remaining change, and push all local commits.
+
+**Inferred user intent:** The user wants a clean remote branch containing all work, with a reviewer-friendly Makefile and no uncommitted local state.
+
+**Commit (code):** `c91e125a1b5e1abfad715f78bdc82fe177f518af` — "Add Makefile and hardening handoff docs"
+
+### What I did
+
+- Added `Makefile` with targets:
+  - `make install`
+  - `make test`
+  - `make check`
+  - `make transpile-example`
+  - `make compile-example`
+  - `make run-example`
+  - `make smoke`
+  - `make dump-ir`
+  - `make dump-ast`
+  - `make docs`
+  - `make clean`
+- Updated `README.md` to document Makefile commands.
+- Updated `docs/release-checklist.md` to use `make smoke` as the primary release/handoff validation.
+- Added `test/hardening.test.js` with golden output, unsupported syntax diagnostics, and performance smoke coverage.
+- Updated the design document with a Phase 3-8 completion addendum and final validation commands.
+- Updated tasks so all Phase 0-8 items are checked.
+- Related final files to the design guide and diary through docmgr.
+- Updated the changelog with final completion notes.
+
+### Why
+
+- Make targets give reviewers and future agents a stable command surface independent of npm script details.
+- `make compile-example` explicitly proves generated C++ compiles and links.
+- Updating the diary before push satisfies the user's workflow requirement and preserves the exact validation evidence.
+
+### What worked
+
+The requested compile path passed:
+
+```bash
+make clean
+make compile-example
+```
+
+The full smoke path passed:
+
+```bash
+make smoke
+```
+
+The ticket validation passed:
+
+```bash
+docmgr doctor --ticket SATELLITE-JS-CPP-TRANSPILER --stale-after 30
+```
+
+### What didn't work
+
+- Before the final Makefile work, `test/hardening.test.js` was untracked and one assertion failed because the diagnostic prose used `supported` rather than `unsupported`. That was fixed before final validation.
+- The design document still contains some historical MVP phrasing in the main body. Rather than rewrite the entire long document under time pressure, I added an explicit completion addendum that records the final Phase 3-8 state and validation commands.
+
+### What I learned
+
+- Makefile targets are useful even for a Node project when the validation path includes C++ compilation.
+- The most important final validation command is `make smoke`, because it exercises JS tests, generated C++ compile/link, and validation-only checking.
+- Diary updates are easiest to keep correct if they are done immediately before the final commit/push boundary.
+
+### What was tricky to build
+
+- The final push preparation had to include code, docs, docmgr tasks, changelog, and diary in one coherent state. The ordering matters: update docs/diary, run validation, commit, amend the diary with the final hash if needed, and only then push.
+- The generated C++ compile target must depend on generated source, the runner, the runtime shim, and driver headers so `make compile-example` rebuilds when any relevant input changes.
+
+### What warrants a second pair of eyes
+
+- Check `Makefile` target dependencies and whether `CXXFLAGS` should be stricter or mission-specific.
+- Review `test/hardening.test.js` golden output expectations when the emitter changes.
+- Confirm the final design addendum is sufficient, or decide whether to rewrite the whole guide after handoff.
+
+### What should be done in the future
+
+- Add more example scripts once real mission use cases appear.
+- Add per-example Make targets if examples expand beyond housekeeping.
+- Re-upload the final post-Phase-8 bundle to reMarkable if the user wants the latest docs there too.
+
+### Code review instructions
+
+- Start with `Makefile`, then run:
+
+```bash
+make clean
+make compile-example
+make smoke
+```
+
+- Inspect generated C++:
+
+```bash
+sed -n '1,220p' build/housekeeping.cpp
+```
+
+- Review hardening tests in `test/hardening.test.js`.
+- Review final docs in `README.md`, `docs/supported-subset.md`, `docs/release-checklist.md`, and the design addendum.
+
+### Technical details
+
+Final validation commands run before the final commit/push:
+
+```bash
+make clean
+make compile-example
+make smoke
+npm test
+npm run smoke
+docmgr doctor --ticket SATELLITE-JS-CPP-TRANSPILER --stale-after 30
 ```

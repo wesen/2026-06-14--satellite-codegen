@@ -8,6 +8,12 @@ It is a focused mission-script compiler, not a general JavaScript runtime.
 
 ```bash
 npm ci
+make smoke
+```
+
+Equivalent npm commands:
+
+```bash
 npm test
 npm run transpile:example
 npm run compile:example
@@ -48,7 +54,19 @@ See `docs/supported-subset.md` for the detailed author-facing rules.
 
 Generated C++ targets `runtime/satellite_os.hpp`, a compile/link shim that documents the expected `satellite::...` runtime API. It is not flight software. Replace or adapt that layer when integrating with the real runtime.
 
-## Main commands
+## Makefile commands
+
+- `make test` — run the Node test suite.
+- `make check` — validate `examples/housekeeping.js` without emitting C++.
+- `make transpile-example` — generate `build/housekeeping.cpp`.
+- `make compile-example` — generate and compile/link `build/housekeeping`.
+- `make run-example` — run the linked example binary.
+- `make smoke` — run tests, compile/link, and validate the example.
+- `make dump-ir` / `make dump-ast` — inspect compiler internals.
+- `make docs` — run `docmgr doctor` for the ticket.
+- `make clean` — remove `build/`.
+
+## NPM commands
 
 - `npm test` — JavaScript unit/regression tests.
 - `npm run transpile:example` — generate `build/housekeeping.cpp`.

@@ -10,6 +10,10 @@ DocType: design-doc
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: Makefile
+      Note: Example transpile/compile/smoke entrypoints added for final handoff
+    - Path: README.md
+      Note: User-facing quickstart and Makefile commands
     - Path: runtime/satellite_os.hpp
       Note: Compile-only runtime shape expected by generated C++
     - Path: source/research/babel-parser.md
@@ -20,8 +24,18 @@ RelatedFiles:
       Note: Source API contract that defines bus/device/task/telemetry/fault semantics
     - Path: src/emitter.js
       Note: Main AST-to-C++ lowering implementation
+    - Path: src/ir.js
+      Note: Mission IR builder added in Phase 3
     - Path: src/parser.js
       Note: Babel parser configuration for mission scripts
+    - Path: src/resource-analysis.js
+      Note: Resource lifecycle analysis added in Phase 5
+    - Path: src/schemas.js
+      Note: Driver and telemetry schema checks added in Phase 4
+    - Path: src/value-model.js
+      Note: Mission value classification added in Phase 4
+    - Path: test/hardening.test.js
+      Note: Golden
     - Path: test/transpile.test.js
       Note: Regression tests for lowering
 ExternalSources:
@@ -33,6 +47,7 @@ LastUpdated: 2026-06-15T02:45:00-04:00
 WhatFor: Onboard a new intern to the satellite-os API contract, the JS subset, the compiler pipeline, the generated C++ runtime shape, and the phased implementation plan.
 WhenToUse: Use before changing the transpiler, adding a lowering rule, reviewing generated C++, or deciding whether a JS construct belongs in the supported mission-script subset.
 ---
+
 
 
 # Satellite JS to C++ Transpiler Design and Implementation Guide
@@ -47,6 +62,7 @@ The current repository now contains an MVP implementation:
 
 - `package.json` and `package-lock.json` define the Node package and pin `@babel/parser`.
 - `src/parser.js` parses module JavaScript with top-level `await` support.
+- `src/validator.js` enforces the Phase 2 mission-script subset before C++ emission.
 - `src/emitter.js` lowers a supported AST subset into C++.
 - `src/cli.js` exposes `satjs-cpp <input.js> --out <output.cpp>`.
 - `runtime/satellite_os.hpp` is a compile-only runtime shim used by tests and examples.
@@ -145,6 +161,7 @@ The repository layout is:
 │   ├── cli.js                                  # Command-line entrypoint.
 │   ├── index.js                                # Public transpile() API.
 │   ├── parser.js                               # Babel parser wrapper.
+│   ├── validator.js                            # Mission subset validation pass.
 │   ├── emitter.js                              # Main AST-to-C++ emitter.
 │   ├── cpp-writer.js                           # Indentation/text helper.
 │   ├── diagnostics.js                          # Error/diagnostic model.
@@ -327,7 +344,7 @@ Important code references:
 - `src/cli.js:52-64` reads the input, calls `transpile()`, and writes either `--out` or stdout.
 - `src/cli.js:67-75` formats `TranspileError` diagnostics and exits non-zero.
 
-The public JavaScript API is `transpile(source, options)` in `src/index.js:4-15`. It returns:
+The public JavaScript API is `transpile(source, options)` in `src/index.js`. It parses, validates, and emits C++. It returns:
 
 ```js
 {
@@ -359,9 +376,26 @@ Why this matters:
 - `numericSeparator` lets source scripts write `400_000` for readability.
 - `errorRecovery: false` is deliberate. In flight-code generation, a parse error should fail fast instead of producing partial output.
 
-### Stage 3: import collection
+### Stage 3: semantic validation
 
-The emitter first scans import declarations (`src/emitter.js:128-159`). There are two supported import categories:
+The Phase 2 implementation now validates the mission-script subset before emission. The validation pass lives in `src/validator.js` and is invoked by `transpile()` before constructing the emitter.
+
+The validator currently checks:
+
+- unsupported imports with stable `SATJS_IMPORT_UNSUPPORTED` diagnostics,
+- `console.*` with a `telemetry.emit` hint,
+- `setTimeout` / `setInterval` with scheduler hints,
+- `eval`, `new Function`, dynamic `import()`, `new Proxy`, and `Reflect.*`,
+- top-level boot wiring policy,
+- `device.register` arity and relative driver-import requirement,
+- `task.once/every/on` arity and callback shape,
+- `fault.handle` arity and callback shape.
+
+The validator does not replace the emitter's defensive checks. It catches mission-policy errors earlier and gives better diagnostics; the emitter still rejects unsupported AST nodes that survive validation.
+
+### Stage 4: import collection
+
+The emitter scans import declarations (`src/emitter.js:128-159`). There are two supported import categories:
 
 1. Exact `satellite-os` imports.
 2. Relative imports such as `./drivers/eps.js`, translated to `#include "drivers/eps.hpp"`.
@@ -387,7 +421,7 @@ for statement in program.body:
   error("Unsupported import source")
 ```
 
-### Stage 4: program partitioning
+### Stage 5: program partitioning
 
 The emitter separates function declarations from top-level boot wiring (`src/emitter.js:74-123`). This is a simple but important convention:
 
@@ -409,7 +443,7 @@ task.start()                        satellite::task::every(...);
                                   }
 ```
 
-### Stage 5: statement and expression emission
+### Stage 6: statement and expression emission
 
 The core of `src/emitter.js` is a recursive AST printer:
 
@@ -435,7 +469,7 @@ function emitExpression(node):
     otherwise        -> diagnostic unsupported syntax
 ```
 
-### Stage 6: diagnostics
+### Stage 7: diagnostics
 
 Diagnostics live in `src/diagnostics.js`:
 
@@ -650,7 +684,9 @@ c++ -std=c++20 -Iruntime -Iexamples -c build/housekeeping.cpp -o build/housekeep
 
 Goal: move mission rules out of ad-hoc emitter errors into a validation pass.
 
-Planned checks:
+Status: implemented in `src/validator.js` with regression coverage in `test/transpile.test.js`.
+
+Implemented checks:
 
 - Only allowed import sources.
 - Only allowed global side effects.
@@ -673,6 +709,8 @@ validate(program):
     else:
       error("top-level statement is not boot wiring")
 ```
+
+The remaining validation follow-up is resource lifecycle analysis, which is tracked separately as Phase 5 because it requires control-flow reasoning.
 
 ### Phase 3: Mission IR
 
@@ -803,6 +841,7 @@ Observed important failure during development:
 - `/home/manuel/code/wesen/2026-06-14--satellite-codegen/src/cli.js` — CLI argument parsing and file I/O.
 - `/home/manuel/code/wesen/2026-06-14--satellite-codegen/src/index.js` — public `transpile()` API.
 - `/home/manuel/code/wesen/2026-06-14--satellite-codegen/src/parser.js` — Babel parse configuration.
+- `/home/manuel/code/wesen/2026-06-14--satellite-codegen/src/validator.js` — mission-script subset validation and stable diagnostics.
 - `/home/manuel/code/wesen/2026-06-14--satellite-codegen/src/emitter.js` — AST-to-C++ lowering.
 - `/home/manuel/code/wesen/2026-06-14--satellite-codegen/src/cpp-writer.js` — generated text indentation helper.
 - `/home/manuel/code/wesen/2026-06-14--satellite-codegen/src/diagnostics.js` — diagnostic/error handling.
@@ -817,3 +856,30 @@ Observed important failure during development:
 - `/home/manuel/code/wesen/2026-06-14--satellite-codegen/source/research/babel-traverse.md` — Babel visitor pattern reference.
 - `/home/manuel/code/wesen/2026-06-14--satellite-codegen/source/research/babel-types.md` — Babel node shape reference.
 - `/home/manuel/code/wesen/2026-06-14--satellite-codegen/source/research/esprima-syntax-tree-format.md` — ESTree syntax tree mental model.
+
+## Phase 3-8 Completion Addendum
+
+After the initial Phase 1 MVP and Phase 2 validation pass, the implementation continued through the remaining ticket phases. This addendum is intentionally short because the detailed phase plan above remains the conceptual guide; it records what is now actually present in the repository.
+
+### Completed implementation areas
+
+- **Phase 3 mission IR:** `src/ir.js` builds a `MissionProgram` representation for imports, functions, constants, and boot operations. The C++ emitter now emits boot wiring from IR operations such as `RegisterDevice`, `RegisterTask`, `RegisterFaultHandler`, and `StartScheduler`.
+- **Phase 4 value model:** `src/value-model.js` classifies mission values and normalizes numeric literals; `src/schemas.js` validates driver options and telemetry values.
+- **Phase 5 resource lifecycle analysis:** `src/resource-analysis.js` catches obvious bus/device handle leaks, conditional-only cleanup, deliberate transfer/return cases, and same-bus interleaving.
+- **Phase 6 runtime integration:** `runtime/README.md`, `examples/runner.cpp`, `npm run compile:example`, and `.github/workflows/ci.yml` document and validate compile/link integration against the runtime shim.
+- **Phase 7 developer experience:** `src/cli.js` supports `--check`, `--dump-ast`, `--dump-ir`, `--source-comments`, and source-snippet diagnostics. `README.md`, `docs/supported-subset.md`, and `docs/release-checklist.md` provide user-facing docs.
+- **Phase 8 hardening:** `test/hardening.test.js` adds golden output coverage, unsupported-AST diagnostics, and performance smoke testing.
+- **Makefile support:** `Makefile` provides `make test`, `make check`, `make transpile-example`, `make compile-example`, `make run-example`, `make smoke`, `make dump-ir`, `make dump-ast`, `make docs`, and `make clean`.
+
+### Current validation commands
+
+The final handoff validation is:
+
+```bash
+make clean
+make compile-example
+make smoke
+docmgr doctor --ticket SATELLITE-JS-CPP-TRANSPILER --stale-after 30
+```
+
+At completion, these commands pass and the generated C++ compiles and links into `build/housekeeping`.
