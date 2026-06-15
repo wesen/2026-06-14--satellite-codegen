@@ -599,7 +599,7 @@ The Makefile is now the easiest local entrypoint for a reviewer. It wraps instal
 
 **Inferred user intent:** The user wants a clean remote branch containing all work, with a reviewer-friendly Makefile and no uncommitted local state.
 
-**Commit (code):** `c91e125a1b5e1abfad715f78bdc82fe177f518af` — "Add Makefile and hardening handoff docs"
+**Commit (code):** `9fea320bd75ddc4066c1161774bb3fc9da5dd9ae` — "Add Makefile and hardening handoff docs"
 
 ### What I did
 
